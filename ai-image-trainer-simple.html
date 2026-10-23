@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AI Image Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<style>
+:root{--bg:#0e1117;--card:#171c26;--card2:#1f2633;--line:#2b3446;--txt:#e8ecf4;--mut:#93a0b8;--acc:#4f8cff;--ok:#2ecc71;--bad:#ff5c6c;--warn:#f5b942}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px}
+header{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#121722;border-bottom:1px solid var(--line)}
+header h1{font-size:17px;margin:0;flex:1}
+#burger{background:none;border:0;color:var(--txt);font-size:26px;line-height:1;padding:4px 8px;cursor:pointer}
+#hdrInfo{font-size:12px;color:var(--mut)}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.2s;z-index:40}
+#overlay.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;bottom:0;left:0;width:280px;max-width:84vw;background:#121722;border-right:1px solid var(--line);transform:translateX(-102%);transition:.22s;z-index:50;display:flex;flex-direction:column;overflow-y:auto}
+#drawer.on{transform:none}
+#drawer .dh{padding:18px 16px;font-weight:700;font-size:17px;border-bottom:1px solid var(--line)}
+#drawer a{display:flex;align-items:center;gap:10px;padding:14px 16px;color:var(--txt);cursor:pointer;border-bottom:1px solid #1a2130}
+#drawer a.active{background:var(--card2);border-left:3px solid var(--acc)}
+#drawer a .bd{margin-left:auto;background:var(--acc);color:#fff;border-radius:10px;padding:1px 8px;font-size:12px}
+#drawer .sep{padding:10px 16px 4px;color:var(--mut);font-size:12px;text-transform:uppercase}
+#drawerStat{margin-top:auto;padding:14px 16px;color:var(--mut);font-size:12px;line-height:1.6}
+main{padding:12px;max-width:980px;margin:0 auto;padding-bottom:70px}
+.pg{display:none}.pg.on{display:block}
+footer{max-width:980px;margin:0 auto;padding:0 12px 24px;text-align:center;font-size:12px;color:var(--mut);line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.card h2{margin:0 0 8px;font-size:16px}
+.card h3{margin:12px 0 6px;font-size:14px;color:var(--mut)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.btn,select,input[type=text],input[type=number]{font:inherit;color:var(--txt);background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+button,.btn{cursor:pointer;display:inline-block}
+button.pri,.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.ok{background:var(--ok);border-color:var(--ok);color:#06210f}
+button.bad{background:#3a1d24;border-color:#6a2a35;color:#ffb3bb}
+button.sel{outline:2px solid var(--acc)}
+button:disabled{opacity:.5}
+input[type=text],input[type=number]{width:100%;max-width:200px}
+label.chk{display:flex;gap:6px;align-items:center;color:var(--mut)}
+.muted{color:var(--mut);font-size:13px;line-height:1.5}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:20px;padding:5px 6px 5px 10px}
+.chip i{width:11px;height:11px;border-radius:50%;display:inline-block}
+.chip b{font-weight:600}.chip small{color:var(--mut)}
+.chip button{padding:0 8px;border-radius:50%;line-height:22px;font-size:14px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:6px}
+.th{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#000;border:2px solid transparent;cursor:pointer}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .n{position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.7);border-radius:8px;padding:1px 7px;font-size:12px}
+.th.lab{border-color:var(--ok)}
+.th.unl .n{background:#7a5a10}
+canvas{max-width:100%;touch-action:none;border-radius:8px;background:#000;display:block;margin:0 auto}
+#cv{touch-action:none}
+.bar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden}
+.bar>div{height:100%;width:0;background:var(--acc);transition:width .15s}
+.boxrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.boxrow i{width:12px;height:12px;border-radius:3px}
+.boxrow span{flex:1}
+.res{padding:8px 10px;margin:6px 0;border-radius:8px;background:var(--card2);border-left:4px solid var(--ok)}
+.log{background:#0a0d13;border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;max-height:150px;overflow:auto;white-space:pre-wrap;color:#b6c2d9}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600}
+.pill{display:inline-block;border-radius:10px;padding:1px 8px;font-size:12px;background:var(--card2);border:1px solid var(--line)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);background:#222b3d;border:1px solid var(--line);padding:10px 16px;border-radius:10px;opacity:0;transition:.25s;z-index:99;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+.hide{display:none!important}
+header{background:linear-gradient(135deg,#17233f,#0f1420);box-shadow:0 2px 12px rgba(0,0,0,.4)}
+button,.btn{transition:.15s;min-height:40px}
+button:active,.btn:active{transform:scale(.97)}
+button.big{font-size:17px;padding:15px 22px;border-radius:12px;width:100%;font-weight:700}
+.hero{background:linear-gradient(160deg,#1b2a4d,#171c26);border-color:#32457a}
+.hero input[type=text]{max-width:none;font-size:17px;padding:14px;margin:10px 0}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.opts label{color:var(--mut);font-size:13px}
+.opts select,.opts input{width:100%;max-width:none;margin-top:4px}
+.steps{list-style:none;padding:0;margin:0 0 12px;display:flex;gap:4px}
+.steps li{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:var(--mut);text-align:center}
+.steps li i{font-style:normal;width:28px;height:28px;border-radius:50%;background:var(--card2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700}
+.steps li.active{color:var(--txt)}
+.steps li.active i{background:var(--acc);border-color:var(--acc);color:#fff;animation:pl 1s infinite}
+.steps li.done i{background:var(--ok);border-color:var(--ok);color:#06210f}
+@keyframes pl{50%{box-shadow:0 0 0 6px rgba(79,140,255,.25)}}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:10px 0}
+.gal .g{background:var(--card2);border-radius:10px;overflow:hidden;font-size:12px}
+.gal canvas{width:100%;height:auto;border-radius:0}
+.gal .g div{padding:6px 8px}
+#histList,#modelList{overflow-x:auto}
+
+/* ===== Light theme (dashboard look) ===== */
+:root{--bg:#f3f5fb;--card:#ffffff;--card2:#eef2fb;--line:#e2e8f4;--txt:#16203a;--mut:#6b7794;--acc:#2f4fd1;--ok:#1fa463;--bad:#d6455a;--warn:#d99a1f}
+html,body{font-family:'DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#fff;box-shadow:none;border-bottom:1px solid var(--line);padding:12px 16px}
+header h1{font-size:18px;font-weight:700}
+#burger{border:1px solid var(--line);border-radius:14px;width:48px;height:48px;font-size:20px;background:#fff;padding:0;color:var(--txt)}
+#hdrInfo{color:var(--mut);font-size:13px}
+#drawer{background:#fff}
+#drawer .dh{border-bottom:1px solid var(--line)}
+#drawer a{border-bottom:1px solid var(--line);color:var(--txt)}
+#drawer a.active{background:#eef2ff;border-left:3px solid var(--acc)}
+#overlay{background:rgba(22,32,58,.35)}
+.card{border-radius:20px;box-shadow:0 1px 2px rgba(22,32,58,.04)}
+button,.btn,select,input[type=text],input[type=number]{background:#fff;color:var(--txt);border-color:var(--line);border-radius:12px}
+button.pri,.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+button.ok{color:#fff}
+button.bad{background:#fdecef;border-color:#f5c6cf;color:#b3263b}
+button.sel{outline:2px solid var(--acc);background:#eef2ff}
+.chip{background:#f3f6fd}
+.th{background:#e9edf7}
+.log{background:#f4f6fb;color:#33415f}
+.res{background:var(--card2)}
+.pill{background:#f3f6fd}
+#toast{background:#16203a;color:#fff;border:0}
+.hero{background:linear-gradient(135deg,#1b2d68,#2a3f86);border-color:#2a3f86;color:#fff}
+.hero h2{color:#fff}
+.hero .muted,.hero .opts label,.hero label.chk{color:#cfd8fb}
+.hero input[type=text],.hero select,.hero input[type=number]{background:#fff;color:#16203a}
+.hero button.pri{background:#fff;color:#2a46c4;border-color:#fff}
+.steps li i{background:#eef2fb}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#3b55c9;font-weight:700;margin:4px 0 6px}
+.dh1{font-size:28px;line-height:1.15;margin:0 0 8px;font-weight:700}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.stat{position:relative;overflow:hidden;background:#fff;border:1px solid var(--line);border-radius:22px;padding:16px 18px 14px;min-height:96px}
+.stat::after{content:'';position:absolute;right:-26px;top:-12px;width:112px;height:112px;border-radius:50%;background:#eaf0ff}
+.stat span{color:var(--mut);position:relative;z-index:1}
+.stat b{display:block;font-size:34px;margin-top:6px;position:relative;z-index:1}
+.dhero{background:linear-gradient(135deg,#1b2d68,#2a3f86);color:#fff;border-radius:22px;padding:20px;margin-bottom:12px}
+.dhero .eyebrow{color:#aebcf5}
+.dhero h2{font-size:21px;margin:4px 0 8px;color:#fff}
+.dhero p{color:#cfd8fb;margin:0 0 16px;line-height:1.5}
+.dhero button{background:#fff;color:#2a46c4;border:0;font-weight:700;border-radius:12px;padding:12px 16px}
+.actitem{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.actitem small{color:var(--mut);display:block}
+.next{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.next b{font-size:14px}
+.foot{color:var(--mut);font-size:12px;margin:18px 4px}
+@media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
+input[type=range]{width:160px}
+
+/* ===== Drawer (dark navy) ===== */
+#drawer{background:#0d1838;border-right:0;width:300px;max-width:82vw;box-shadow:8px 0 30px rgba(0,0,0,.35);padding-bottom:14px}
+#drawer .brand{display:flex;align-items:center;gap:14px;padding:22px 18px 14px;font-weight:700;font-size:19px;color:#e8edff}
+#drawer .logo{width:56px;height:56px;flex:none;border-radius:16px;background:#2a3f9a;display:flex;align-items:center;justify-content:center;color:#cfd8ff}
+#drawer .sec{padding:24px 24px 8px;font-size:12px;letter-spacing:.2em;color:#7f8bb5;font-weight:700}
+#drawer a{display:flex;align-items:center;gap:16px;margin:4px 12px;padding:13px 16px;border:0;border-radius:14px;color:#aab4d6;font-weight:500;font-size:16px}
+#drawer a svg{width:24px;height:24px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#drawer a.active{background:#17265a;color:#fff;border-left:0;box-shadow:inset 3px 0 0 #4f6cf0}
+#drawer a:active{background:#132150}
+#drawer a .bd{margin-left:auto;background:#2f4fd1;color:#fff}
+#drawer #drawerStat{color:#7f8bb5;margin-top:auto;padding:18px 24px 6px}
+#overlay{background:rgba(10,16,40,.55)}
+
+/* ===== Simple mode ===== */
+details.adv{margin:4px 0 12px;border:1px dashed var(--line);border-radius:12px;padding:8px 12px;background:rgba(255,255,255,.12)}
+details.adv summary{cursor:pointer;font-weight:600;font-size:14px}
+.card:not(.hero) details.adv{background:#f7f9fe}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.quick button{border-radius:20px;padding:5px 14px;min-height:34px;font-size:14px}
+.help{background:#eef2ff;color:#2a3f86;border-radius:14px;padding:10px 14px;font-size:14px;line-height:1.5;margin-bottom:12px}
+.howto{display:flex;gap:8px;margin:0 0 12px}
+.howto div{flex:1;background:rgba(255,255,255,.14);border-radius:12px;padding:8px;text-align:center;font-size:12px;color:#fff}
+.howto div b{display:block;font-size:20px}
+.btn.big,label.btn.big{display:block;text-align:center;font-size:17px;padding:15px;border-radius:14px;font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <button id="burger" aria-label="Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <h1 id="title">Dataset</h1>
+  <span id="hdrInfo"></span>
+</header>
+<div id="overlay"></div>
+
+<nav id="drawer">
+  <div class="brand"><div class="logo"><svg width="30" height="30" style="stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12s2.2-3.5 5-3.5S17 12 17 12s-2.2 3.5-5 3.5S7 12 7 12z"/><circle cx="12" cy="12" r="1.6"/></svg></div><span>AI Image Trainer</span></div>
+  <div class="sec">WORKSPACE</div>
+  <a data-pg="dash"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></svg><span>Dashboard</span></a>
+  <a data-pg="auto"><svg viewBox="0 0 24 24"><path d="M4 20 15 9"/><path d="m14 7 3 3"/><path d="m16 3 .6 1.4L18 5l-1.4.6L16 7l-.6-1.4L14 5l1.4-.6z"/><path d="m20 11 .5 1.1 1.1.5-1.1.5L20 14l-.5-1.1-1.1-.5 1.1-.5z"/></svg><span>Auto Mode</span></a>
+  <a data-pg="data"><svg viewBox="0 0 24 24"><rect x="6" y="3.5" width="14.5" height="14.5" rx="3"/><path d="M3.5 7v10.5A3 3 0 0 0 6.5 20.5H17"/><circle cx="11" cy="8.5" r="1.4"/><path d="m6.5 16 4-4 3 3 2.5-2.5 4 4"/></svg><span>Dataset &amp; Classes</span><span class="bd" id="bdImgs">0</span></a>
+  <a data-pg="annot"><svg viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8"/><path d="M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8"/><path d="M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16"/><path d="M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/></svg><span>Annotate / Crop</span></a>
+  <a data-pg="train"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.4"/><circle cx="5" cy="6" r="1.8"/><circle cx="19" cy="6" r="1.8"/><circle cx="5" cy="18" r="1.8"/><circle cx="19" cy="18" r="1.8"/><path d="m6.5 7.2 3.6 3.3M17.5 7.2l-3.6 3.3M6.5 16.8l3.6-3.3M17.5 16.8l-3.6-3.3"/></svg><span>Train Model</span></a>
+  <a data-pg="test"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8 11 2.2 2.2L14.2 9"/></svg><span>Test Image</span></a>
+  <a data-pg="live"><svg viewBox="0 0 24 24"><path d="M4 8.5A2 2 0 0 1 6 6.5h2l1.4-2h5.2l1.4 2h2a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.4"/></svg><span>Live Camera</span></a>
+  <div class="sec">PROJECT</div>
+  <a data-pg="files"><svg viewBox="0 0 24 24"><path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2.2h7a2 2 0 0 1 2 2V17.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M3.5 11h17"/></svg><span>Saved Files</span><span class="bd" id="bdFiles">0</span></a>
+  <a id="mExport"><svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 10.8 4.5 4.5 4.5-4.5"/><path d="M4.5 16v2.5a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V16"/></svg><span>Backup export</span></a>
+  <a id="mImport"><svg viewBox="0 0 24 24"><path d="M12 15V4"/><path d="m7.5 8.2 4.5-4.5 4.5 4.5"/><path d="M4.5 16v2.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V16"/></svg><span>Import backup / model</span></a>
+  <div id="drawerStat"></div>
+</nav>
+<input type="file" id="impFile" accept=".json,application/json" class="hide">
+
+<main>
+
+<!-- ================= DASHBOARD ================= -->
+<section class="pg" id="pg-dash">
+  <div class="eyebrow">Your workspace</div>
+  <h1 class="dh1">Images se intelligence tak.</h1>
+  <p class="muted">Dataset banao, objects annotate karo aur apna detector train karo — ek hi jagah.</p>
+  <div class="stats">
+    <div class="stat"><span>Images</span><b id="dImgs">0</b></div>
+    <div class="stat"><span>Classes</span><b id="dCls">0</b></div>
+    <div class="stat"><span>Boxes</span><b id="dBoxes">0</b></div>
+    <div class="stat"><span>Saved models</span><b id="dModels">0</b></div>
+  </div>
+  <div class="dhero">
+    <div class="eyebrow">One command workflow</div>
+    <h2>Auto Mode se shuru karo</h2>
+    <p>Objects ke naam likho. Photos, approximate annotations, training aur test ka workflow ek saath chalao.</p>
+    <div class="row"><button id="dAuto">Auto Mode kholen</button><button id="dUpload">Dataset upload karein</button></div>
+  </div>
+  <div class="card">
+    <h2>Recent activity</h2>
+    <div id="actList" class="muted">Abhi koi activity nahi. Shuru karne ke liye photos upload karein.</div>
+    <div class="next"><div class="eyebrow">Next step</div><b id="nextStep">Pehle class add karein.</b></div>
+  </div>
+  <div class="foot">AI Image Trainer · Train locally, test confidently</div>
+</section>
+
+<!-- ================= AUTO ================= -->
+<section class="pg" id="pg-auto">
+  <div class="card hero">
+    <h2>Kya detect karna hai?</h2>
+    <div class="howto"><div><b>1</b>Naam likho</div><div><b>2</b>Button dabao</div><div><b>3</b>Model ready</div></div>
+    <input type="text" id="autoCmd" placeholder="English me naam, jaise: dog" autocomplete="off">
+    <div class="quick" id="quick"><button data-q="dog">dog</button><button data-q="cat">cat</button><button data-q="car">car</button><button data-q="bottle">bottle</button><button data-q="chair">chair</button><button data-q="cell phone">phone</button></div>
+    <details class="adv"><summary>⚙ Options (zaroori nahi)</summary>
+      <div class="opts" style="margin-top:10px">
+        <label>Photos per class<input type="number" id="autoN" value="60" min="20" max="300"></label>
+        <label>Training<select id="autoE"><option value="30">Fast (30 epochs)</option><option value="60" selected>Normal (60)</option><option value="100">Best (100)</option></select></label>
+      </div>
+      <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="autoFresh"> Naya start (purana dataset delete karo)</label>
+      <button id="toManual">Apni photos se manual train karo →</button>
+    </details>
+    <button class="pri big" id="autoGo">▶ Shuru karo</button>
+    <button class="bad big hide" id="autoStop" style="margin-top:8px">Stop</button>
+  </div>
+  <div class="card">
+    <ol class="steps" id="steps">
+      <li data-s="1"><i>1</i><span>Photos download</span></li>
+      <li data-s="2"><i>2</i><span>Naam + auto box</span></li>
+      <li data-s="3"><i>3</i><span>Training</span></li>
+      <li data-s="4"><i>4</i><span>Test run</span></li>
+      <li data-s="5"><i>5</i><span>Files save</span></li>
+    </ol>
+    <div class="bar"><div id="autoBar"></div></div>
+    <p class="muted" id="autoMsg">Ready.</p>
+    <div class="log" id="autoLog"></div>
+  </div>
+  <div class="card hide" id="autoResCard">
+    <h2>Test result</h2>
+    <p id="autoSummary"></p>
+    <div class="gal" id="autoGallery"></div>
+    <div class="row">
+      <button class="pri" id="goTest">Apni photo test karo</button>
+      <button id="goLive">Live camera</button>
+      <button id="goFiles">Saved Files</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DATASET ================= -->
+<section class="pg" id="pg-data">
+  <div class="help">Steps: ① naam add karo ② photos chuno ③ photo par tap karke box lagao ④ neeche Train dabao.</div>
+  <div class="card">
+    <h2>1) Classes (object ke naam)</h2>
+    <div class="row">
+      <input type="text" id="newClass" placeholder="jaise: dog, cat, car">
+      <button class="pri" id="addClass">+ Add class</button>
+    </div>
+    <div class="chips" id="classChips"></div>
+    
+  </div>
+  <div class="card">
+    <h2>2) Photos upload</h2>
+    <div class="row">
+      <label class="btn pri big" style="flex:1">+ Photos chuno<input type="file" id="upFiles" accept="image/*" multiple class="hide"></label>
+      <button class="bad" id="clearAll">Sab delete</button>
+    </div>
+    <div class="bar" style="margin-top:10px"><div id="upBar"></div></div>
+    <p class="muted" id="upMsg">Photo choti karke (max 1024px) browser me save hoti hai.</p>
+  </div>
+  <div class="card">
+    <h2>3) Images <span class="muted" id="imgStat"></span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <select id="imgFilter"><option value="all">Sab</option><option value="unl">Sirf unlabeled</option><option value="lab">Sirf labeled</option></select>
+      <span class="muted">Photo par tap karo → annotate</span>
+    </div>
+    <div id="grid"></div>
+  </div>
+  <div class="card"><button class="pri big" id="toTrain">Model train karo →</button></div>
+</section>
+
+<!-- ================= ANNOTATE ================= -->
+<section class="pg" id="pg-annot">
+  <div class="card">
+    <div class="row">
+      <button id="backData">← Photos</button>
+      <button id="prevImg">Prev</button>
+      <b id="annIdx">0/0</b>
+      <button id="nextImg">Next</button>
+      <button id="nextUnl">Next unlabeled </button>
+      <button class="bad" id="delImg" style="margin-left:auto">Delete</button>
+    </div>
+    <div class="row" style="margin:10px 0">
+      <button id="modeBox" class="sel">Box banao</button>
+      <button id="modeCrop">Crop</button>
+      <select id="clsSel"></select>
+    </div>
+    <canvas id="cv" width="300" height="200"></canvas>
+    <div class="row hide" id="cropBar" style="margin-top:10px">
+      <button class="ok" id="applyCrop">Crop apply</button>
+      <button id="clearCrop">Crop hatao</button>
+      <span class="muted">Crop me object ke andar wale boxes bache rehte hain.</span>
+    </div>
+    <p class="muted" id="annHint">Photo par ungli/mouse se drag karke object ke chaaron taraf box banao. Box usi class ka banega jo upar select hai.</p>
+  </div>
+  <div class="card">
+    <h2>Is photo ke boxes</h2>
+    <div id="boxList"></div>
+  </div>
+</section>
+
+<!-- ================= TRAIN ================= -->
+<section class="pg" id="pg-train">
+  <div class="card">
+    <h2>Model train karo</h2>
+    <p class="muted">Tumhari photos aur boxes se model sikhega. Kam se kam 5 labeled photos chahiye.</p>
+    <div class="row">
+      <label class="muted">Epochs (zyada = behtar, par slow)<br><input type="number" id="epochs" value="60" min="5" max="500"></label>
+    </div>
+    <details class="adv"><summary>⚙ Advanced settings</summary>
+      <div class="row" style="margin-top:8px">
+        <label class="muted">Batch<br><input type="number" id="batch" value="16" min="2" max="64"></label>
+        <label class="muted">Learning rate<br><input type="number" id="lr" value="0.001" step="0.0005"></label>
+      </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="aug" checked> Flip augmentation (data double)</label>
+    </details>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="modelName" value="my-model" placeholder="model name">
+      <button class="pri" id="trainBtn">▶ Training shuru</button>
+      <button class="bad hide" id="stopBtn">Stop</button>
+    </div>
+    <div class="bar" style="margin-top:12px"><div id="trBar"></div></div>
+    <p class="muted" id="trMsg">Ready.</p>
+    <canvas id="chart" width="600" height="160"></canvas>
+    <h3>Log</h3>
+    <div class="log" id="trLog"></div>
+  </div>
+  <div class="card">
+    <h2>Tips (accuracy ke liye)</h2>
+    <p class="muted">• Har class ki 50-200 alag-alag photos (angle, light, background).<br>• Box object ko tightly cover kare.<br>• Ek photo me jitne objects ho sab par box lagao.<br>• Loss kam hote jaye aur test me galat aaye to epochs badhao ya aur photos daalo.</p>
+  </div>
+</section>
+
+<!-- ================= TEST ================= -->
+<section class="pg" id="pg-test">
+  <div class="card">
+    <h2>Photo test karo</h2>
+    <div class="row">
+      <label class="btn pri big" style="flex:1">Photo chuno<input type="file" id="testFile" accept="image/*" class="hide"></label>
+      <label class="muted">Confidence ≥ <b id="thV">40</b>%<br><input type="range" id="thr" min="5" max="95" value="40"></label>
+    </div>
+    <p class="muted" id="activeModelTxt"></p>
+    <canvas id="cvTest" width="300" height="200" style="margin-top:8px"></canvas>
+    <div id="testRes"></div>
+  </div>
+</section>
+
+<!-- ================= LIVE ================= -->
+<section class="pg" id="pg-live">
+  <div class="card">
+    <h2>Live camera detection</h2>
+    <div class="row">
+      <select id="camFace"><option value="environment">Back camera</option><option value="user">Front camera</option></select>
+      <button class="pri" id="camStart">Start</button>
+      <button class="bad" id="camStop">Stop</button>
+      <label class="muted">Confidence ≥ <b id="thL">40</b>%<br><input type="range" id="thrL" min="5" max="95" value="40"></label>
+    </div>
+    <p class="muted" id="fps"></p>
+    <video id="vid" playsinline muted class="hide"></video>
+    <canvas id="cvLive" width="320" height="240"></canvas>
+    <div id="liveRes"></div>
+    <p class="muted">Camera chalne ke liye browser permission chahiye. Kuch mobile browsers file:// se camera nahi dete: aise me file ko https hosting ya localhost par kholo.</p>
+  </div>
+</section>
+
+<!-- ================= FILES ================= -->
+<section class="pg" id="pg-files">
+  <div class="card">
+    <h2>Mera saved kaam</h2>
+    <p class="muted">Dataset aur models is browser me apne aap save hote hain. Dusre phone/computer par le jaane ke liye neeche backup file banao.</p>
+    <div class="row">
+      <span class="pill" id="stImgs">0 photos</span>
+      <span class="pill" id="stBoxes">0 boxes</span>
+      <span class="pill" id="stClasses">0 classes</span>
+      <span class="pill" id="stUsage">storage: -</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="pri" id="btnBackup">Poora project backup (.json)</button>
+      <button id="btnImport">Import</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Trained models (browser me saved)</h2>
+    <div id="modelList" class="muted">Koi model nahi.</div>
+  </div>
+  <div class="card">
+    <h2>Exported files ka record</h2>
+    <div id="histList" class="muted">Abhi koi export nahi hua.</div>
+  </div>
+</section>
+
+</main>
+<footer>Photos Wikimedia Commons se hain aur TensorFlow.js ka use hua hai.</footer>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ============================ helpers ============================ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const clamp = (v,a=0,b=1) => Math.max(a,Math.min(b,v));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const PALETTE = ['#ff5c6c','#4f8cff','#2ecc71','#f5b942','#b36bff','#19c3d6','#ff8a3d','#e84fa6','#9bd13a','#7d8cff'];
+let toastT;
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2600);}
+const fmtSize = b => b>1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB';
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+const state = {classes:[], images:[], cur:-1, mode:'box', backbone:null, head:null, headName:null, headClasses:[]};
+const G_INPUT = 224;
+
+/* ============================ IndexedDB ============================ */
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('ai-trainer-db',1);
+  r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('images',{keyPath:'id'});d.createObjectStore('meta');};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+const dbp = openDB();
+async function tx(store,mode,fn){const db=await dbp;return new Promise((res,rej)=>{
+  const t=db.transaction(store,mode);const s=t.objectStore(store);let out;const rq=fn(s);
+  if(rq)rq.onsuccess=()=>{out=rq.result;};
+  t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error);});}
+const dbPut = rec => tx('images','readwrite',s=>s.put(rec));
+const dbDel = id => tx('images','readwrite',s=>s.delete(id));
+const dbAll = () => tx('images','readonly',s=>s.getAll());
+const dbClear = () => tx('images','readwrite',s=>s.clear());
+const metaSet = (k,v) => tx('meta','readwrite',s=>s.put(v,k));
+const metaGet = k => tx('meta','readonly',s=>s.get(k));
+const saveClasses = () => metaSet('classes',state.classes);
+
+/* ============================ image url cache ============================ */
+const urls = new Map();
+function urlFor(rec){ if(!urls.has(rec.id)) urls.set(rec.id,URL.createObjectURL(rec.blob)); return urls.get(rec.id); }
+function dropUrl(rec){ if(urls.has(rec.id)){URL.revokeObjectURL(urls.get(rec.id));urls.delete(rec.id);} }
+function loadImg(rec){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=urlFor(rec);});}
+const colorOf = name => { const i=state.classes.findIndex(c=>c.name===name); return i>=0?state.classes[i].color:'#fff'; };
+
+/* ============================ navigation / burger ============================ */
+const TITLES={dash:'Dashboard',auto:'Auto Mode',data:'Dataset & Classes',annot:'Annotate / Crop',train:'Train Model',test:'Test Image',live:'Live Camera',files:'Saved Files'};
+function openMenu(o){$('#drawer').classList.toggle('on',o);$('#overlay').classList.toggle('on',o);}
+$('#burger').onclick=()=>openMenu(!$('#drawer').classList.contains('on'));
+$('#overlay').onclick=()=>openMenu(false);
+function showPage(p){
+  if(p!=='live') stopCam();
+  $$('.pg').forEach(e=>e.classList.toggle('on',e.id==='pg-'+p));
+  $$('#drawer a[data-pg]').forEach(a=>a.classList.toggle('active',a.dataset.pg===p));
+  $('#title').textContent=TITLES[p];
+  openMenu(false);window.scrollTo(0,0);
+  if(p==='dash')refreshDash();
+  if(p==='data')renderData();
+  if(p==='annot'){ if(state.cur<0&&state.images.length) openAnnot(0); else if(state.cur>=0) openAnnot(state.cur); else renderAnnotEmpty(); }
+  if(p==='files')refreshFiles();
+  if(p==='test'||p==='live')updateActiveModelTxt();
+}
+$$('#drawer a[data-pg]').forEach(a=>a.onclick=()=>showPage(a.dataset.pg));
+$('#mExport').onclick=()=>{openMenu(false);exportProject();};
+$('#mImport').onclick=()=>{openMenu(false);$('#impFile').click();};
+$('#btnBackup').onclick=()=>exportProject();
+$('#btnImport').onclick=()=>$('#impFile').click();
+
+function updateCounters(){
+  const boxes=state.images.reduce((a,r)=>a+r.boxes.length,0);
+  $('#bdImgs').textContent=state.images.length;
+  $('#hdrInfo').textContent=state.images.length+' images · '+boxes+' boxes';
+  if($('#pg-dash').classList.contains('on'))refreshDash();
+  $('#bdFiles').textContent=readHist().length;
+  if(navigator.storage&&navigator.storage.estimate){navigator.storage.estimate().then(e=>{
+    $('#drawerStat').textContent='Browser storage: '+fmtSize(e.usage||0)+' / '+fmtSize(e.quota||0);
+    $('#stUsage').textContent='storage: '+fmtSize(e.usage||0);
+  }).catch(()=>{});}
+}
+
+/* ============================ classes ============================ */
+function addClass(){
+  const n=$('#newClass').value.trim().toLowerCase().replace(/\s+/g,'_');
+  if(!n)return toast('Class ka naam likho');
+  if(state.classes.some(c=>c.name===n))return toast('Ye class pehle se hai');
+  state.classes.push({name:n,color:PALETTE[state.classes.length%PALETTE.length]});
+  $('#newClass').value='';saveClasses();renderClasses();toast('Class add: '+n);addAct('Class add hui: '+n);
+}
+$('#addClass').onclick=addClass;
+$('#newClass').onkeydown=e=>{if(e.key==='Enter')addClass();};
+function classCount(n){return state.images.reduce((a,r)=>a+r.boxes.filter(b=>b.cls===n).length,0);}
+function renderClasses(){
+  const box=$('#classChips');box.innerHTML='';
+  state.classes.forEach(c=>{
+    const d=document.createElement('div');d.className='chip';
+    d.innerHTML=`<i style="background:${c.color}"></i><b>${c.name}</b><small>${classCount(c.name)} box</small>`;
+    const x=document.createElement('button');x.textContent='×';
+    x.onclick=async()=>{
+      if(!confirm('Class "'+c.name+'" aur uske saare boxes delete karein?'))return;
+      state.classes=state.classes.filter(k=>k!==c);
+      for(const r of state.images){const before=r.boxes.length;r.boxes=r.boxes.filter(b=>b.cls!==c.name);if(r.boxes.length!==before)await dbPut(r);}
+      await saveClasses();renderClasses();renderData();updateCounters();
+    };
+    d.appendChild(x);box.appendChild(d);
+  });
+  const sel=$('#clsSel');const keep=sel.value;sel.innerHTML='';
+  state.classes.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;sel.appendChild(o);});
+  if(keep&&state.classes.some(c=>c.name===keep))sel.value=keep;
+}
+
+/* ============================ upload ============================ */
+$('#upFiles').onchange=async e=>{
+  const files=[...e.target.files];e.target.value='';
+  if(!files.length)return;
+  let ok=0;
+  for(let i=0;i<files.length;i++){
+    try{
+      const bmp=await createImageBitmap(files[i]);
+      const s=Math.min(1,1024/Math.max(bmp.width,bmp.height));
+      const w=Math.round(bmp.width*s),h=Math.round(bmp.height*s);
+      const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(bmp,0,0,w,h);bmp.close&&bmp.close();
+      const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.88));
+      const rec={id:uid(),name:files[i].name,blob,w,h,boxes:[]};
+      await dbPut(rec);state.images.push(rec);ok++;
+    }catch(err){console.warn('skip',files[i].name,err);}
+    $('#upBar').style.width=((i+1)/files.length*100)+'%';
+    $('#upMsg').textContent='Upload: '+(i+1)+' / '+files.length;
+    if(i%5===0)await sleep(0);
+  }
+  $('#upMsg').textContent=ok+' photos add ho gayi.';
+  renderData();updateCounters();toast(ok+' photos add');addAct(ok+' photos upload hui');
+  setTimeout(()=>$('#upBar').style.width='0',1500);
+};
+$('#clearAll').onclick=async()=>{
+  if(!state.images.length)return;
+  if(!confirm('Saari photos aur boxes delete karein? (Classes bachi rahengi)'))return;
+  await dbClear();state.images.forEach(dropUrl);state.images=[];state.cur=-1;renderData();renderClasses();updateCounters();
+};
+$('#imgFilter').onchange=renderData;
+function renderData(){
+  renderClasses();
+  const f=$('#imgFilter').value;const g=$('#grid');g.innerHTML='';
+  const labeled=state.images.filter(r=>r.boxes.length).length;
+  $('#imgStat').textContent='('+state.images.length+' total, '+labeled+' labeled)';
+  state.images.forEach((r,i)=>{
+    if(f==='unl'&&r.boxes.length)return;if(f==='lab'&&!r.boxes.length)return;
+    const d=document.createElement('div');d.className='th '+(r.boxes.length?'lab':'unl');
+    const im=document.createElement('img');im.loading='lazy';im.src=urlFor(r);
+    const n=document.createElement('span');n.className='n';n.textContent=r.boxes.length;
+    d.append(im,n);d.onclick=()=>{state.cur=i;showPage('annot');};g.appendChild(d);
+  });
+  updateCounters();
+}
+
+/* ============================ annotate ============================ */
+const cv=$('#cv'),cx=cv.getContext('2d');
+let img=null,drag=null,cropRect=null;
+function renderAnnotEmpty(){cx.clearRect(0,0,cv.width,cv.height);$('#annIdx').textContent='0/0';$('#boxList').innerHTML='<p class="muted">Pehle Dataset page par photos upload karo.</p>';img=null;}
+async function openAnnot(i){
+  if(!state.images.length)return renderAnnotEmpty();
+  state.cur=clamp(i,0,state.images.length-1);cropRect=null;drag=null;
+  img=await loadImg(state.images[state.cur]);
+  layoutCanvas();draw();renderBoxList();renderClasses();
+  $('#annIdx').textContent=(state.cur+1)+'/'+state.images.length;
+  $('#cropBar').classList.toggle('hide',state.mode!=='crop');
+}
+function layoutCanvas(){
+  const maxW=Math.min(window.innerWidth-48,900),maxH=Math.max(260,window.innerHeight*0.6);
+  const s=Math.min(maxW/img.naturalWidth,maxH/img.naturalHeight);
+  cv.width=Math.max(50,Math.round(img.naturalWidth*s));cv.height=Math.max(50,Math.round(img.naturalHeight*s));
+}
+window.addEventListener('resize',()=>{if(img&&$('#pg-annot').classList.contains('on')){layoutCanvas();draw();}});
+function rectFromDrag(){if(!drag)return null;const x=Math.min(drag.x0,drag.x1),y=Math.min(drag.y0,drag.y1);return{x,y,w:Math.abs(drag.x1-drag.x0),h:Math.abs(drag.y1-drag.y0)};}
+function draw(){
+  if(!img)return;const W=cv.width,H=cv.height;const rec=state.images[state.cur];
+  cx.drawImage(img,0,0,W,H);
+  rec.boxes.forEach(b=>{
+    const col=colorOf(b.cls);cx.lineWidth=2;cx.strokeStyle=col;cx.strokeRect(b.x*W,b.y*H,b.w*W,b.h*H);
+    cx.font='bold 13px sans-serif';const tw=cx.measureText(b.cls).width+8;
+    cx.fillStyle=col;cx.fillRect(b.x*W,Math.max(0,b.y*H-18),tw,18);cx.fillStyle='#000';cx.fillText(b.cls,b.x*W+4,Math.max(13,b.y*H-5));
+  });
+  const r=rectFromDrag()||(state.mode==='crop'?cropRect:null);
+  if(r){
+    if(state.mode==='crop'){
+      cx.fillStyle='rgba(0,0,0,.55)';
+      cx.fillRect(0,0,W,r.y*H);cx.fillRect(0,(r.y+r.h)*H,W,H-(r.y+r.h)*H);
+      cx.fillRect(0,r.y*H,r.x*W,r.h*H);cx.fillRect((r.x+r.w)*W,r.y*H,W-(r.x+r.w)*W,r.h*H);
+      cx.setLineDash([6,4]);cx.strokeStyle='#fff';
+    } else {cx.setLineDash([]);cx.strokeStyle=colorOf($('#clsSel').value);}
+    cx.lineWidth=2;cx.strokeRect(r.x*W,r.y*H,r.w*W,r.h*H);cx.setLineDash([]);
+  }
+}
+function pos(e){const r=cv.getBoundingClientRect();return{x:clamp((e.clientX-r.left)/r.width),y:clamp((e.clientY-r.top)/r.height)};}
+cv.addEventListener('pointerdown',e=>{
+  if(!img)return;
+  if(state.mode==='box'&&!state.classes.length)return toast('Pehle ek class add karo');
+  e.preventDefault();cv.setPointerCapture(e.pointerId);const p=pos(e);drag={x0:p.x,y0:p.y,x1:p.x,y1:p.y};
+});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const p=pos(e);drag.x1=p.x;drag.y1=p.y;draw();});
+cv.addEventListener('pointerup',async e=>{
+  if(!drag)return;const p=pos(e);drag.x1=p.x;drag.y1=p.y;const r=rectFromDrag();drag=null;
+  if(r.w<0.02||r.h<0.02){draw();return;}
+  if(state.mode==='crop'){cropRect=r;$('#annHint').textContent='Crop select ho gaya. "Crop apply" dabao.';draw();return;}
+  const rec=state.images[state.cur];rec.boxes.push({cls:$('#clsSel').value,x:r.x,y:r.y,w:r.w,h:r.h});
+  await dbPut(rec);draw();renderBoxList();updateCounters();
+});
+function renderBoxList(){
+  const rec=state.images[state.cur];const L=$('#boxList');L.innerHTML='';
+  if(!rec||!rec.boxes.length){L.innerHTML='<p class="muted">Abhi koi box nahi.</p>';return;}
+  rec.boxes.forEach((b,i)=>{
+    const d=document.createElement('div');d.className='boxrow';
+    d.innerHTML=`<i style="background:${colorOf(b.cls)}"></i><span>${b.cls}</span>`;
+    const x=document.createElement('button');x.className='bad';x.textContent='×';
+    x.onclick=async()=>{rec.boxes.splice(i,1);await dbPut(rec);draw();renderBoxList();updateCounters();};
+    d.appendChild(x);L.appendChild(d);
+  });
+}
+function setMode(m){
+  state.mode=m;$('#modeBox').classList.toggle('sel',m==='box');$('#modeCrop').classList.toggle('sel',m==='crop');
+  $('#cropBar').classList.toggle('hide',m!=='crop');cropRect=null;
+  $('#annHint').textContent=m==='box'?'Object ke chaaron taraf drag karke box banao.':'Drag karke crop area chuno, phir "Crop apply".';
+  draw();
+}
+$('#modeBox').onclick=()=>setMode('box');$('#modeCrop').onclick=()=>setMode('crop');
+$('#clearCrop').onclick=()=>{cropRect=null;draw();};
+$('#applyCrop').onclick=async()=>{
+  if(!cropRect)return toast('Pehle crop area chuno');
+  const rec=state.images[state.cur],c=cropRect;
+  const pw=Math.max(8,Math.round(c.w*rec.w)),ph=Math.max(8,Math.round(c.h*rec.h));
+  const cc=document.createElement('canvas');cc.width=pw;cc.height=ph;
+  cc.getContext('2d').drawImage(img,c.x*img.naturalWidth,c.y*img.naturalHeight,c.w*img.naturalWidth,c.h*img.naturalHeight,0,0,pw,ph);
+  const blob=await new Promise(r=>cc.toBlob(r,'image/jpeg',0.9));
+  const nb=[];
+  rec.boxes.forEach(b=>{
+    const x1=Math.max(b.x,c.x),y1=Math.max(b.y,c.y),x2=Math.min(b.x+b.w,c.x+c.w),y2=Math.min(b.y+b.h,c.y+c.h);
+    if(x2<=x1||y2<=y1)return;
+    if((x2-x1)*(y2-y1)<0.5*b.w*b.h)return;
+    nb.push({cls:b.cls,x:(x1-c.x)/c.w,y:(y1-c.y)/c.h,w:(x2-x1)/c.w,h:(y2-y1)/c.h});
+  });
+  dropUrl(rec);rec.blob=blob;rec.w=pw;rec.h=ph;rec.boxes=nb;await dbPut(rec);
+  cropRect=null;setMode('box');await openAnnot(state.cur);updateCounters();toast('Crop ho gaya');
+};
+$('#prevImg').onclick=()=>openAnnot(state.cur-1);
+$('#nextImg').onclick=()=>openAnnot(state.cur+1);
+$('#nextUnl').onclick=()=>{
+  const n=state.images.length;for(let k=1;k<=n;k++){const i=(state.cur+k)%n;if(!state.images[i].boxes.length)return openAnnot(i);}
+  toast('Sab photos label ho chuki hain ');
+};
+$('#delImg').onclick=async()=>{
+  if(state.cur<0||!confirm('Ye photo delete karein?'))return;
+  const rec=state.images[state.cur];await dbDel(rec.id);dropUrl(rec);state.images.splice(state.cur,1);
+  updateCounters();
+  if(!state.images.length){state.cur=-1;renderAnnotEmpty();}else openAnnot(Math.min(state.cur,state.images.length-1));
+};
+
+/* ============================ model / training ============================ */
+const BB_URL='https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json';
+const BB_LOCAL='indexeddb://backbone-mobilenet-025';
+async function ensureBackbone(msg=()=>{}){
+  if(state.backbone)return;
+  let mn=null;
+  try{mn=await tf.loadLayersModel(BB_LOCAL);msg('Backbone local storage se load hua.');}catch(e){}
+  if(!mn){
+    msg('MobileNet backbone download ho raha hai (sirf pehli baar, internet chahiye)...');
+    mn=await tf.loadLayersModel(BB_URL);
+    try{await mn.save(BB_LOCAL);}catch(e){console.warn('backbone cache fail',e);}
+  }
+  const layer=mn.getLayer('conv_pw_11_relu');
+  state.backbone=tf.model({inputs:mn.inputs,outputs:layer.output});
+  tf.tidy(()=>state.backbone.predict(tf.zeros([1,G_INPUT,G_INPUT,3])));
+}
+function gridInfo(){const s=state.backbone.outputShape;return{G:s[1],F:s[3]};}
+function imgToTensor(src){return tf.tidy(()=>tf.browser.fromPixels(src).resizeBilinear([G_INPUT,G_INPUT]).toFloat().div(127.5).sub(1).expandDims(0));}
+function makeHead(C){
+  const {G,F}=gridInfo();const m=tf.sequential();
+  m.add(tf.layers.conv2d({inputShape:[G,G,F],filters:128,kernelSize:3,padding:'same',activation:'relu'}));
+  m.add(tf.layers.dropout({rate:0.2}));
+  m.add(tf.layers.conv2d({filters:64,kernelSize:3,padding:'same',activation:'relu'}));
+  m.add(tf.layers.conv2d({filters:5+C,kernelSize:1,padding:'same'}));
+  return m;
+}
+function makeLoss(C){
+  return (yT,yP)=>tf.tidy(()=>{
+    const sl=(t,a,n)=>t.slice([0,0,0,a],[-1,-1,-1,n]);
+    const obj=sl(yT,0,1),box=sl(yT,1,4),cls=sl(yT,5,C);
+    const pO=sl(yP,0,1),pB=tf.sigmoid(sl(yP,1,4)),pC=sl(yP,5,C);
+    const bce=tf.relu(pO).sub(pO.mul(obj)).add(pO.abs().neg().exp().add(1).log());
+    const w=obj.mul(5).add(tf.scalar(1).sub(obj).mul(0.25));
+    const lObj=bce.mul(w).sum([1,2,3]);
+    const lBox=pB.sub(box).square().sum(-1,true).mul(obj).mul(5).sum([1,2,3]);
+    const lCls=cls.mul(tf.logSoftmax(pC)).sum(-1,true).neg().mul(obj).sum([1,2,3]);
+    return lObj.add(lBox).add(lCls);
+  });
+}
+function log(m){['#trLog','#autoLog'].forEach(s=>{const l=$(s);l.textContent+=m+'\n';l.scrollTop=l.scrollHeight;});}
+function drawChart(h){
+  const c=$('#chart'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);
+  if(h.length<2)return;const mx=Math.max(...h),mn=Math.min(...h);
+  g.strokeStyle='#4f8cff';g.lineWidth=2;g.beginPath();
+  h.forEach((v,i)=>{const x=i/(h.length-1)*(c.width-10)+5,y=c.height-8-((v-mn)/(mx-mn||1))*(c.height-16);i?g.lineTo(x,y):g.moveTo(x,y);});
+  g.stroke();g.fillStyle='#93a0b8';g.font='12px sans-serif';g.fillText('loss '+h[h.length-1].toFixed(3),8,14);
+}
+let training=false,fitModel=null;
+$('#stopBtn').onclick=()=>{if(fitModel)fitModel.stopTraining=true;};
+$('#trainBtn').onclick=()=>runTraining({});
+async function runTraining(o){
+  if(training)return false;
+  const labeled=state.images.filter(r=>r.boxes.length);
+  if(!state.classes.length)return toast('Pehle class add karo');
+  if(labeled.length<5)return toast('Kam se kam 5 labeled photos chahiye (jyada better)');
+  const name=(o.name||$('#modelName').value.trim()||'my-model').replace(/[^\w\-]/g,'_');
+  const emptyCls=state.classes.filter(c=>classCount(c.name)===0).map(c=>c.name);
+  if(emptyCls.length&&!o.auto&&!confirm('Is class me koi box nahi: '+emptyCls.join(', ')+'. Phir bhi train karein?'))return;
+  training=true;$('#trainBtn').disabled=true;$('#stopBtn').classList.remove('hide');$('#trLog').textContent='';
+  const setMsg=m=>{$('#trMsg').textContent=m;o.onMsg&&o.onMsg(m);};
+  let X=null,Y=null,trainOk=false;
+  try{
+    await ensureBackbone(m=>{setMsg(m);log(m);});
+    const C=state.classes.length,{G,F}=gridInfo(),K=5+C;
+    const aug=(o.aug!==undefined?o.aug:$('#aug').checked),N=labeled.length*(aug?2:1),fs=G*G*F;
+    log(`Photos: ${labeled.length}, samples: ${N}, classes: ${C}, grid: ${G}x${G}`);
+    const xa=new Float32Array(N*fs),ya=new Float32Array(N*G*G*K);
+    const cc=document.createElement('canvas');cc.width=cc.height=G_INPUT;const cg=cc.getContext('2d');
+    let n=0;
+    for(let i=0;i<labeled.length;i++){
+      const rec=labeled[i],im=await loadImg(rec);
+      for(const flip of (aug?[false,true]:[false])){
+        cg.save();if(flip){cg.translate(G_INPUT,0);cg.scale(-1,1);}
+        cg.drawImage(im,0,0,G_INPUT,G_INPUT);cg.restore();
+        const f=tf.tidy(()=>state.backbone.predict(imgToTensor(cc)));
+        xa.set(await f.data(),n*fs);f.dispose();
+        for(const b of rec.boxes){
+          const ci=state.classes.findIndex(c=>c.name===b.cls);if(ci<0)continue;
+          const bx=flip?1-(b.x+b.w):b.x,mx=bx+b.w/2,my=b.y+b.h/2;
+          const gi=Math.min(G-1,Math.floor(my*G)),gj=Math.min(G-1,Math.floor(mx*G));
+          const off=((n*G+gi)*G+gj)*K;
+          for(let k=5;k<K;k++)ya[off+k]=0;
+          ya[off]=1;ya[off+1]=mx*G-gj;ya[off+2]=my*G-gi;ya[off+3]=Math.sqrt(b.w);ya[off+4]=Math.sqrt(b.h);ya[off+5+ci]=1;
+        }
+        n++;
+      }
+      setMsg(`Features nikal rahe hain: ${i+1}/${labeled.length}`);
+      $('#trBar').style.width=((i+1)/labeled.length*30)+'%';o.onProgress&&o.onProgress((i+1)/labeled.length*0.3);
+      if(i%3===0)await tf.nextFrame();
+    }
+    X=tf.tensor4d(xa,[N,G,G,F]);Y=tf.tensor4d(ya,[N,G,G,K]);
+    const head=makeHead(C);
+    head.compile({optimizer:tf.train.adam(o.lr||parseFloat($('#lr').value)||0.001),loss:makeLoss(C)});
+    fitModel=head;
+    const E=o.epochs||parseInt($('#epochs').value)||60,hist=[];
+    log('Training shuru...');
+    await head.fit(X,Y,{epochs:E,batchSize:o.batch||parseInt($('#batch').value)||16,shuffle:true,callbacks:{
+      onEpochEnd:async(ep,lg)=>{
+        hist.push(lg.loss);drawChart(hist);
+        $('#trBar').style.width=(30+(ep+1)/E*70)+'%';o.onProgress&&o.onProgress(0.3+(ep+1)/E*0.7);
+        setMsg(`Epoch ${ep+1}/${E} · loss ${lg.loss.toFixed(4)}`);
+        if(ep%5===0||ep===E-1)log(`epoch ${ep+1}: loss ${lg.loss.toFixed(4)}`);
+        await tf.nextFrame();
+      }}});
+    const clean=makeHead(C);clean.setWeights(head.getWeights());head.dispose();
+    if(state.head)state.head.dispose();
+    state.head=clean;state.headName=name;state.headClasses=state.classes.map(c=>c.name);
+    await clean.save('indexeddb://det-'+name);
+    localStorage.setItem('meta-'+name,JSON.stringify({classes:state.headClasses,date:Date.now(),samples:N,epochs:hist.length}));
+    localStorage.setItem('activeModel',name);
+    setMsg('Training complete. Model "'+name+'" save ho gaya (Saved Files me dikhega).');log('Model saved: '+name);
+    toast('Training complete ');trainOk=true;addAct('Model train hua: '+name);
+  }catch(err){console.error(err);setMsg('Error: '+err.message);log('ERROR: '+err.message);toast('Training error');}
+  finally{if(X)X.dispose();if(Y)Y.dispose();fitModel=null;training=false;$('#trainBtn').disabled=false;$('#stopBtn').classList.add('hide');}
+  return trainOk;
+}
+
+/* ============================ load model / detect ============================ */
+async function loadSavedModel(name){
+  const m=await tf.loadLayersModel('indexeddb://det-'+name);
+  const meta=JSON.parse(localStorage.getItem('meta-'+name)||'{}');
+  if(state.head)state.head.dispose();
+  state.head=m;state.headName=name;state.headClasses=meta.classes||[];
+  localStorage.setItem('activeModel',name);
+}
+async function ensureReady(){
+  await ensureBackbone(m=>toast(m));
+  if(!state.head){
+    const a=localStorage.getItem('activeModel');
+    if(a){try{await loadSavedModel(a);}catch(e){console.warn(e);}}
+  }
+  if(!state.head)throw new Error('Pehle model train karo ya Saved Files se model load karo.');
+}
+function updateActiveModelTxt(){
+  const a=state.headName||localStorage.getItem('activeModel');
+  const t=a?('Active model: '+a+' ('+((state.headClasses.length?state.headClasses:(JSON.parse(localStorage.getItem('meta-'+a)||'{}').classes||[])).join(', ')||'-')+')'):'Koi model nahi: pehle Train karo.';
+  $('#activeModelTxt').textContent=t;
+}
+const sig=x=>1/(1+Math.exp(-x));
+function iou(a,b){
+  const x1=Math.max(a.x,b.x),y1=Math.max(a.y,b.y),x2=Math.min(a.x+a.w,b.x+b.w),y2=Math.min(a.y+a.h,b.y+b.h);
+  const i=Math.max(0,x2-x1)*Math.max(0,y2-y1);return i/(a.w*a.h+b.w*b.h-i+1e-9);
+}
+async function detect(src,thr){
+  const out=tf.tidy(()=>state.head.predict(state.backbone.predict(imgToTensor(src))).squeeze(0));
+  const [G,,K]=out.shape;const d=await out.data();out.dispose();const C=K-5;const cand=[];
+  for(let i=0;i<G;i++)for(let j=0;j<G;j++){
+    const o=(i*G+j)*K,obj=sig(d[o]);if(obj<thr*0.5)continue;
+    let mx=-1e9;for(let k=0;k<C;k++)mx=Math.max(mx,d[o+5+k]);
+    let sum=0,best=0,bi=0;const ex=[];for(let k=0;k<C;k++){const e=Math.exp(d[o+5+k]-mx);ex.push(e);sum+=e;}
+    ex.forEach((e,k)=>{const p=e/sum;if(p>best){best=p;bi=k;}});
+    const score=obj*best;if(score<thr)continue;
+    const cxn=(j+sig(d[o+1]))/G,cyn=(i+sig(d[o+2]))/G,w=Math.pow(sig(d[o+3]),2),h=Math.pow(sig(d[o+4]),2);
+    cand.push({cls:state.headClasses[bi]||('class'+bi),ci:bi,score,x:clamp(cxn-w/2),y:clamp(cyn-h/2),w:Math.min(w,1),h:Math.min(h,1)});
+  }
+  cand.sort((a,b)=>b.score-a.score);const keep=[];
+  for(const c of cand){if(!keep.some(k=>k.ci===c.ci&&iou(k,c)>0.45))keep.push(c);}
+  return keep.slice(0,30);
+}
+function drawDets(g,W,H,dets){
+  dets.forEach(b=>{
+    const col=PALETTE[b.ci%PALETTE.length];g.lineWidth=3;g.strokeStyle=col;g.strokeRect(b.x*W,b.y*H,b.w*W,b.h*H);
+    const t=b.cls+' '+Math.round(b.score*100)+'%';g.font='bold 14px sans-serif';const tw=g.measureText(t).width+10;
+    const ty=b.y*H-20<0?b.y*H:b.y*H-20;g.fillStyle=col;g.fillRect(b.x*W,ty,tw,20);g.fillStyle='#000';g.fillText(t,b.x*W+5,ty+15);
+  });
+}
+const resHTML=dets=>dets.length?dets.map(d=>`<div class="res"><b>${d.cls.replace(/_/g,' ')}</b> detected — ${Math.round(d.score*100)}% confidence</div>`).join(''):'<div class="res" style="border-color:var(--warn)">Kuch detect nahi hua (confidence slider kam karke dekho).</div>';
+
+/* ---- test image ---- */
+$('#thr').oninput=()=>$('#thV').textContent=$('#thr').value;
+let lastTestImg=null;
+async function runTest(){
+  if(!lastTestImg)return;
+  try{await ensureReady();}catch(e){return toast(e.message);}
+  const c=$('#cvTest'),g=c.getContext('2d');
+  const s=Math.min(1,Math.min(window.innerWidth-48,900)/lastTestImg.naturalWidth);
+  c.width=Math.round(lastTestImg.naturalWidth*s);c.height=Math.round(lastTestImg.naturalHeight*s);
+  g.drawImage(lastTestImg,0,0,c.width,c.height);
+  const src=document.createElement('canvas');src.width=c.width;src.height=c.height;src.getContext('2d').drawImage(lastTestImg,0,0,c.width,c.height);
+  const dets=await detect(src,$('#thr').value/100);
+  drawDets(g,c.width,c.height,dets);$('#testRes').innerHTML=resHTML(dets);
+}
+$('#thr').onchange=runTest;
+$('#testFile').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;const im=new Image();
+  im.onload=()=>{lastTestImg=im;runTest();};im.src=URL.createObjectURL(f);e.target.value='';
+};
+
+/* ---- live camera ---- */
+const live={on:false,busy:false,stream:null};
+$('#thrL').oninput=()=>$('#thL').textContent=$('#thrL').value;
+async function startCam(){
+  if(live.on)return;
+  try{await ensureReady();}catch(e){return toast(e.message);}
+  try{
+    live.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:$('#camFace').value,width:{ideal:640}},audio:false});
+  }catch(e){return toast('Camera nahi khula: '+e.message);}
+  const v=$('#vid');v.srcObject=live.stream;await v.play();live.on=true;liveLoop();
+}
+function stopCam(){
+  live.on=false;if(live.stream){live.stream.getTracks().forEach(t=>t.stop());live.stream=null;}
+}
+let lastT=performance.now();
+async function liveLoop(){
+  if(!live.on)return;
+  const v=$('#vid');
+  if(!live.busy&&v.readyState>=2&&v.videoWidth){
+    live.busy=true;
+    const c=$('#cvLive'),g=c.getContext('2d');
+    const s=Math.min(1,Math.min(window.innerWidth-48,900)/v.videoWidth);
+    c.width=Math.round(v.videoWidth*s);c.height=Math.round(v.videoHeight*s);
+    g.drawImage(v,0,0,c.width,c.height);
+    try{
+      const dets=await detect(v,$('#thrL').value/100);
+      g.drawImage(v,0,0,c.width,c.height);drawDets(g,c.width,c.height,dets);
+      $('#liveRes').innerHTML=resHTML(dets.slice(0,5));
+      const now=performance.now();$('#fps').textContent=Math.round(1000/(now-lastT))+' FPS';lastT=now;
+    }catch(e){console.error(e);}
+    live.busy=false;
+  }
+  requestAnimationFrame(liveLoop);
+}
+$('#camStart').onclick=startCam;$('#camStop').onclick=stopCam;
+
+/* ============================ saved files / export / import ============================ */
+const readHist=()=>{try{return JSON.parse(localStorage.getItem('exportHistory')||'[]');}catch(e){return [];}};
+function addHist(h){const a=readHist();a.unshift(h);localStorage.setItem('exportHistory',JSON.stringify(a.slice(0,30)));updateCounters();}
+async function saveBlob(blob,name,type,force){
+  let picked=false;
+  if(window.showSaveFilePicker&&!force){
+    try{
+      const h=await showSaveFilePicker({suggestedName:name,types:[{description:'JSON',accept:{'application/json':['.json']}}]});
+      const w=await h.createWritable();await w.write(blob);await w.close();picked=true;
+    }catch(e){if(e.name==='AbortError')return false;}
+  }
+  if(!picked){
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},5000);
+  }
+  addHist({name,type,size:blob.size,date:Date.now(),where:picked?'Tumhara chuna hua folder':'Downloads folder'});
+  toast('File save: '+name);addAct('File save hui: '+name);return true;
+}
+function b64(buf){const u=new Uint8Array(buf);let s='';const ch=0x8000;for(let i=0;i<u.length;i+=ch)s+=String.fromCharCode.apply(null,u.subarray(i,i+ch));return btoa(s);}
+function unb64(s){const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u.buffer;}
+const blobToDataURL=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b);});
+async function modelToObj(name){
+  const m=await tf.loadLayersModel('indexeddb://det-'+name);let art;
+  await m.save(tf.io.withSaveHandler(async a=>{art=a;return{modelArtifactsInfo:{dateSaved:new Date(),modelTopologyType:'JSON'}};}));
+  m.dispose();
+  return{name,meta:JSON.parse(localStorage.getItem('meta-'+name)||'{}'),modelTopology:art.modelTopology,weightSpecs:art.weightSpecs,weightB64:b64(art.weightData)};
+}
+async function importModelObj(o){
+  const m=await tf.loadLayersModel(tf.io.fromMemory({modelTopology:o.modelTopology,weightSpecs:o.weightSpecs,weightData:unb64(o.weightB64)}));
+  const name=o.name||('imported-'+uid());
+  await m.save('indexeddb://det-'+name);m.dispose();
+  localStorage.setItem('meta-'+name,JSON.stringify(o.meta||{}));
+  return name;
+}
+async function listModels(){
+  try{const l=await tf.io.listModels();return Object.keys(l).filter(k=>k.startsWith('indexeddb://det-')).map(k=>({name:k.replace('indexeddb://det-',''),info:l[k]}));}catch(e){return [];}
+}
+async function exportProject(force){
+  if(!state.images.length&&!state.classes.length&&!(await listModels()).length)return toast('Export karne ko kuch nahi hai');
+  toast('Backup ban raha hai...');
+  const parts=['{"kind":"project","version":1,"classes":',JSON.stringify(state.classes),',"images":['];
+  for(let i=0;i<state.images.length;i++){
+    const r=state.images[i];
+    parts.push((i?',':'')+JSON.stringify({name:r.name,w:r.w,h:r.h,boxes:r.boxes,data:await blobToDataURL(r.blob)}));
+    if(i%10===0)await sleep(0);
+  }
+  parts.push('],"models":[');
+  const ms=await listModels();
+  for(let i=0;i<ms.length;i++)parts.push((i?',':'')+JSON.stringify(await modelToObj(ms[i].name)));
+  parts.push(']}');
+  const d=new Date(),stamp=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  await saveBlob(new Blob(parts,{type:'application/json'}),'ai-trainer-project-'+stamp+'.json','Project backup',force===true);
+  if($('#pg-files').classList.contains('on'))refreshFiles();
+}
+$('#impFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    toast('Import ho raha hai...');
+    const o=JSON.parse(await f.text());
+    if(o.kind==='model'){const n=await importModelObj(o);toast('Model import: '+n);}
+    else if(o.kind==='project'){
+      const replace=state.images.length?confirm('OK = purana dataset hata kar replace karo\nCancel = purane me merge karo'):false;
+      if(replace){await dbClear();state.images.forEach(dropUrl);state.images=[];state.classes=[];}
+      (o.classes||[]).forEach(c=>{if(!state.classes.some(k=>k.name===c.name))state.classes.push({name:c.name,color:c.color||PALETTE[state.classes.length%PALETTE.length]});});
+      await saveClasses();
+      for(const im of (o.images||[])){
+        const blob=await (await fetch(im.data)).blob();
+        const rec={id:uid(),name:im.name,blob,w:im.w,h:im.h,boxes:im.boxes||[]};
+        await dbPut(rec);state.images.push(rec);
+      }
+      for(const m of (o.models||[])){try{await importModelObj(m);}catch(err){console.warn(err);}}
+      state.cur=-1;toast('Project import ho gaya');
+    } else throw new Error('Unknown file');
+    renderData();updateCounters();if($('#pg-files').classList.contains('on'))refreshFiles();
+  }catch(err){console.error(err);toast('Import fail: '+err.message);}
+};
+async function refreshFiles(){
+  const boxes=state.images.reduce((a,r)=>a+r.boxes.length,0);
+  $('#stImgs').textContent=state.images.length+' photos';$('#stBoxes').textContent=boxes+' boxes';$('#stClasses').textContent=state.classes.length+' classes';
+  updateCounters();
+  const ms=await listModels(),L=$('#modelList');L.innerHTML='';
+  if(!ms.length)L.textContent='Koi trained model abhi saved nahi hai.';
+  const active=localStorage.getItem('activeModel');
+  ms.forEach(m=>{
+    const meta=JSON.parse(localStorage.getItem('meta-'+m.name)||'{}');
+    const d=document.createElement('div');d.className='res';
+    d.innerHTML=`<b>${m.name}</b> ${m.name===active?'<span class="pill">active</span>':''}<br><span class="muted">Classes: ${(meta.classes||[]).join(', ')||'-'} · ${meta.date?new Date(meta.date).toLocaleString():''} · ${fmtSize(m.info.weightDataBytes||0)}</span><br>`;
+    const b1=document.createElement('button');b1.textContent='Use / Load';b1.onclick=async()=>{try{await loadSavedModel(m.name);toast('Model load: '+m.name);refreshFiles();}catch(e){toast(e.message);}};
+    const b2=document.createElement('button');b2.textContent='.json file';b2.onclick=async()=>{
+      const o=await modelToObj(m.name);o.kind='model';await saveBlob(new Blob([JSON.stringify(o)],{type:'application/json'}),'model-'+m.name+'.json','Model');refreshFiles();};
+    const b3=document.createElement('button');b3.className='bad';b3.textContent='Delete';b3.onclick=async()=>{
+      if(!confirm('Model "'+m.name+'" delete karein?'))return;
+      await tf.io.removeModel('indexeddb://det-'+m.name);localStorage.removeItem('meta-'+m.name);
+      if(state.headName===m.name){state.head&&state.head.dispose();state.head=null;state.headName=null;}
+      if(localStorage.getItem('activeModel')===m.name)localStorage.removeItem('activeModel');refreshFiles();};
+    const r=document.createElement('div');r.className='row';r.style.marginTop='6px';r.append(b1,b2,b3);d.appendChild(r);L.appendChild(d);
+  });
+  const h=readHist(),H=$('#histList');
+  if(!h.length){H.textContent='Abhi koi export nahi hua.';}
+  else{
+    H.innerHTML='<table><tr><th>File</th><th>Type</th><th>Size</th><th>Kahan</th><th>Date</th></tr>'+
+      h.map(x=>`<tr><td>${x.name}</td><td>${x.type}</td><td>${fmtSize(x.size)}</td><td>${x.where}</td><td>${new Date(x.date).toLocaleString()}</td></tr>`).join('')+'</table>';
+  }
+}
+
+/* ============================ AUTO MODE ============================ */
+const COCO=['person','bicycle','car','motorcycle','airplane','bus','train','truck','boat','traffic light','fire hydrant','stop sign','parking meter','bench','bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe','backpack','umbrella','handbag','tie','suitcase','frisbee','skis','snowboard','sports ball','kite','baseball bat','baseball glove','skateboard','surfboard','tennis racket','bottle','wine glass','cup','fork','knife','spoon','bowl','banana','apple','sandwich','orange','broccoli','carrot','hot dog','pizza','donut','cake','chair','couch','potted plant','bed','dining table','toilet','tv','laptop','mouse','remote','keyboard','cell phone','microwave','oven','toaster','sink','refrigerator','book','clock','vase','scissors','teddy bear','hair drier','toothbrush'];
+const ALIAS={people:'person',human:'person',man:'person',woman:'person',bike:'bicycle',plane:'airplane',aeroplane:'airplane',motorbike:'motorcycle',television:'tv',monitor:'tv',phone:'cell phone',mobile:'cell phone',cellphone:'cell phone',sofa:'couch',table:'dining table',glass:'wine glass',plant:'potted plant',puppy:'dog',kitten:'cat'};
+function cocoName(w){
+  w=w.toLowerCase().replace(/_/g,' ').trim();
+  if(ALIAS[w])return ALIAS[w];if(COCO.includes(w))return w;
+  if(w.endsWith('s')&&COCO.includes(w.slice(0,-1)))return w.slice(0,-1);return null;
+}
+const auto={running:false,abort:false,coco:null};
+const autoMsg=m=>{$('#autoMsg').textContent=m;};
+const autoBar=f=>{$('#autoBar').style.width=Math.round(clamp(f)*100)+'%';};
+function setStep(n,st){$$('#steps li').forEach(li=>{if(+li.dataset.s===n){li.classList.toggle('active',st==='active');li.classList.toggle('done',st==='done');}});}
+async function wikiCandidates(term,need,seen){
+  const out=[];let off=0;
+  for(let page=0;page<12&&out.length<need&&!auto.abort;page++){
+    const u='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=50&gsroffset='+off+
+      '&gsrsearch='+encodeURIComponent(term+' filetype:bitmap')+'&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=640';
+    const r=await fetch(u);if(!r.ok)throw new Error('Search fail (http '+r.status+')');
+    const j=await r.json();
+    const pages=j.query?Object.values(j.query.pages):[];pages.sort((a,b)=>a.index-b.index);
+    for(const p of pages){
+      const ii=p.imageinfo&&p.imageinfo[0];
+      if(!ii||ii.mime!=='image/jpeg'||!ii.thumburl||seen.has(ii.thumburl))continue;
+      seen.add(ii.thumburl);out.push({url:ii.thumburl,title:p.title});
+    }
+    if(j.continue&&j.continue.gsroffset!==undefined)off=j.continue.gsroffset;else break;
+  }
+  return out;
+}
+async function autoCollect(cls,n,nTest,onFrac){
+  const coco=cocoName(cls),term=cls.replace(/_/g,' '),target=n+nTest;
+  const cands=await wikiCandidates(term,target*3,new Set());
+  log(`"${cls}": ${cands.length} candidate photos mile`+(coco?' · auto-box: COCO-SSD':' · COCO me nahi hai, poori photo ka box lagega'));
+  const tests=[];let ds=0,skipped=0,idx=0,num=state.images.filter(r=>r.boxes.some(b=>b.cls===cls)).length;
+  async function worker(){
+    while(!auto.abort&&ds+tests.length<target){
+      const c=cands[idx++];if(!c)return;
+      try{
+        const resp=await fetch(c.url);if(!resp.ok)throw new Error('http '+resp.status);
+        const bmp=await createImageBitmap(await resp.blob());
+        const s=Math.min(1,1024/Math.max(bmp.width,bmp.height)),w=Math.round(bmp.width*s),h=Math.round(bmp.height*s);
+        if(w<120||h<120){bmp.close&&bmp.close();skipped++;continue;}
+        const cn=document.createElement('canvas');cn.width=w;cn.height=h;cn.getContext('2d').drawImage(bmp,0,0,w,h);bmp.close&&bmp.close();
+        let boxes;
+        if(coco){
+          const pr=(await auto.coco.detect(cn,20,0.4)).filter(p=>p.class===coco&&p.score>=0.5&&p.bbox[2]*p.bbox[3]>=0.03*w*h).slice(0,6);
+          if(!pr.length){skipped++;continue;}
+          boxes=pr.map(p=>{const x=clamp(p.bbox[0]/w),y=clamp(p.bbox[1]/h);return{cls,x,y,w:Math.min(p.bbox[2]/w,1-x),h:Math.min(p.bbox[3]/h,1-y)};});
+        }else boxes=[{cls,x:0.05,y:0.05,w:0.9,h:0.9}];
+        if(tests.length<nTest){tests.push({cls,canvas:cn,boxes});}
+        else{
+          const blob=await new Promise(r=>cn.toBlob(r,'image/jpeg',0.88));num++;
+          const rec={id:uid(),name:cls+'_'+String(num).padStart(3,'0')+'.jpg',blob,w,h,boxes};
+          await dbPut(rec);state.images.push(rec);ds++;
+        }
+      }catch(e){skipped++;}
+      onFrac((ds+tests.length)/target);
+      autoMsg(`"${cls}": ${ds+tests.length}/${target} photos ready (${skipped} skip)`);
+    }
+  }
+  await Promise.all([worker(),worker(),worker()]);
+  log(`"${cls}": ${ds} train + ${tests.length} test photos ready, ${skipped} skip`);
+  if(ds<5)log(`"${cls}" ki bahut kam photos mili. Koi aur/simple naam try karo (jaise English me).`);
+  return{tests,ds};
+}
+$('#autoStop').onclick=()=>{auto.abort=true;if(fitModel)fitModel.stopTraining=true;autoMsg('Stop ho raha hai...');};
+$('#autoCmd').onkeydown=e=>{if(e.key==='Enter')autoRun();};
+$('#autoGo').onclick=autoRun;
+$('#goTest').onclick=()=>showPage('test');$('#goLive').onclick=()=>showPage('live');$('#goFiles').onclick=()=>showPage('files');
+async function autoRun(){
+  if(auto.running||training)return;
+  const words=[...new Set($('#autoCmd').value.split(/[,\n،]+/).map(s=>s.trim().toLowerCase().replace(/\s+/g,'_').replace(/[^\w\-]/g,'')).filter(Boolean))];
+  if(!words.length)return toast('Pehle object ka naam likho (jaise dog)');
+  const n=clamp(parseInt($('#autoN').value)||60,20,300,20),epochs=parseInt($('#autoE').value)||60,fresh=$('#autoFresh').checked;
+  if(fresh&&state.images.length&&!confirm('Purana dataset delete ho jayega. Aage badhein?'))return;
+  auto.running=true;auto.abort=false;
+  $('#autoGo').classList.add('hide');$('#autoStop').classList.remove('hide');$('#autoResCard').classList.add('hide');
+  $('#autoLog').textContent='';$('#trLog').textContent='';autoBar(0);[1,2,3,4,5].forEach(i=>setStep(i,''));
+  try{
+    if(fresh){await dbClear();state.images.forEach(dropUrl);state.images=[];state.classes=[];state.cur=-1;}
+    words.forEach(w=>{if(!state.classes.some(c=>c.name===w))state.classes.push({name:w,color:PALETTE[state.classes.length%PALETTE.length]});});
+    await saveClasses();renderClasses();
+    setStep(1,'active');setStep(2,'active');
+    if(words.some(w=>cocoName(w))){
+      autoMsg('Auto-box model (COCO-SSD) load ho raha hai...');log('COCO-SSD load ho raha hai...');
+      if(typeof cocoSsd==='undefined')throw new Error('COCO-SSD load nahi hua. Internet check karo.');
+      auto.coco=auto.coco||await cocoSsd.load({base:'lite_mobilenet_v2'});
+    }
+    const nTest=Math.max(3,Math.round(n*0.1)),tests=[];let total=0;
+    for(let wi=0;wi<words.length&&!auto.abort;wi++){
+      const r=await autoCollect(words[wi],n,nTest,f=>autoBar((wi+f)/words.length*0.45));
+      tests.push(...r.tests);total+=r.ds;
+    }
+    if(auto.abort)throw new Error('Stop kar diya.');
+    if(total<5)throw new Error('Kam photos mili ('+total+'). Naam badal kar try karo ya internet check karo.');
+    renderData();updateCounters();setStep(1,'done');setStep(2,'done');autoBar(0.45);
+    log(`Dataset ready: ${total} photos (naam: ${words[0]}_001.jpg ...)`);
+    setStep(3,'active');
+    const name=(words.join('-').slice(0,40)+'-auto').replace(/[^\w\-]/g,'_');
+    const ok=await runTraining({auto:true,name,epochs,batch:16,aug:true,onMsg:autoMsg,onProgress:f=>autoBar(0.45+f*0.4)});
+    if(!ok)throw new Error('Training poora nahi hua. Log dekho.');
+    setStep(3,'done');autoBar(0.85);
+    setStep(4,'active');autoMsg('Test run ho raha hai...');
+    const gal=$('#autoGallery');gal.innerHTML='';let hit=0;
+    for(const t of tests){
+      const dets=await detect(t.canvas,0.3);const good=dets.some(d=>d.cls===t.cls);if(good)hit++;
+      const th=document.createElement('canvas'),sc=Math.min(1,320/t.canvas.width);
+      th.width=Math.round(t.canvas.width*sc);th.height=Math.round(t.canvas.height*sc);
+      const g=th.getContext('2d');g.drawImage(t.canvas,0,0,th.width,th.height);drawDets(g,th.width,th.height,dets.slice(0,4));
+      const top=dets.find(d=>d.cls===t.cls)||dets[0];
+      const cap=document.createElement('div');
+      cap.textContent=good?`${t.cls.replace(/_/g,' ')} detected — ${Math.round(top.score*100)}% confidence`:(top?`${top.cls} ${Math.round(top.score*100)}% (expected ${t.cls})`:`kuch detect nahi (expected ${t.cls})`);
+      const card=document.createElement('div');card.className='g';card.append(th,cap);gal.appendChild(card);
+    }
+    const pct=tests.length?Math.round(hit/tests.length*100):0;
+    const weak=words.filter(w=>!cocoName(w));
+    $('#autoSummary').innerHTML=`<b>${hit}/${tests.length}</b> naye test photos me sahi class detect hui (<b>${pct}%</b>). Ye photos training me use nahi hui thi.`+
+      (weak.length?`<br><span class="muted">Note: ${weak.join(', ')} ke boxes poori photo ke lagaye gaye (COCO me nahi), isliye localization rough ho sakti hai. Behtar ke liye Annotate page par boxes sahi karke dobara Train karo.</span>`:'');
+    $('#autoResCard').classList.remove('hide');
+    setStep(4,'done');autoBar(0.92);
+    setStep(5,'active');autoMsg('Files bana raha hu...');
+    const mo=await modelToObj(name);mo.kind='model';
+    await saveBlob(new Blob([JSON.stringify(mo)],{type:'application/json'}),name+'-model.json','Model (auto)',true);
+    await exportProject(true);
+    setStep(5,'done');autoBar(1);
+    autoMsg('Sab ho gaya! Model + project backup files Downloads me save hui (Saved Files me record hai).');
+    toast('Auto Mode complete ');addAct('Auto Mode complete: '+words.join(', '));
+  }catch(err){
+    console.error(err);autoMsg(''+err.message);log('ERROR: '+err.message);toast(err.message);
+  }finally{
+    auto.running=false;$('#autoGo').classList.remove('hide');$('#autoStop').classList.add('hide');
+    renderData();updateCounters();
+  }
+}
+
+/* ============================ dashboard ============================ */
+const readAct=()=>{try{return JSON.parse(localStorage.getItem('activity')||'[]');}catch(e){return [];}};
+function addAct(t){const a=readAct();a.unshift({t,d:Date.now()});localStorage.setItem('activity',JSON.stringify(a.slice(0,6)));}
+async function refreshDash(){
+  const boxes=state.images.reduce((a,r)=>a+r.boxes.length,0);
+  $('#dImgs').textContent=state.images.length;$('#dCls').textContent=state.classes.length;$('#dBoxes').textContent=boxes;
+  const ms=await listModels();$('#dModels').textContent=ms.length;
+  const act=readAct(),L=$('#actList');
+  if(!act.length){L.textContent='Abhi koi activity nahi. Shuru karne ke liye photos upload karein.';}
+  else{L.innerHTML=act.map(x=>`<div class="actitem">${x.t}<small>${new Date(x.d).toLocaleString()}</small></div>`).join('');}
+  let next='Test image ya Live camera try karein.';
+  if(!state.classes.length)next='Pehle class add karein.';
+  else if(!state.images.length)next='Photos upload karein (ya Auto Mode chalayein).';
+  else if(state.images.some(r=>!r.boxes.length))next='Unlabeled photos par boxes lagayein (Annotate).';
+  else if(!ms.length)next='Model train karein.';
+  $('#nextStep').textContent=next;
+}
+$('#dAuto').onclick=()=>showPage('auto');$('#dUpload').onclick=()=>showPage('data');
+
+/* ============================ init ============================ */
+(async function init(){
+  try{
+    state.classes=(await metaGet('classes'))||[];
+    state.images=(await dbAll()).sort((a,b)=>a.id<b.id?-1:1);
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+  }catch(e){console.error(e);toast('Storage error: '+e.message);}
+  renderClasses();updateCounters();showPage('dash');
+})();
+
+/* ============================ simple-mode wiring ============================ */
+$$('#quick button').forEach(b=>b.onclick=()=>{
+  const inp=$('#autoCmd'),w=b.dataset.q,cur=inp.value.split(',').map(x=>x.trim()).filter(Boolean);
+  if(!cur.includes(w))cur.push(w);inp.value=cur.join(', ');
+});
+$('#toManual').onclick=()=>showPage('data');
+$('#toTrain').onclick=()=>showPage('train');
+$('#backData').onclick=()=>showPage('data');
+</script>
+</body>
+</html>
