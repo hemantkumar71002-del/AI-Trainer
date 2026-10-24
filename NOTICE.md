@@ -3,24 +3,25 @@ Copyright (c) 2026 hemantkumar71002-del
 
 This project is licensed under the MIT License. See the LICENSE file for full license text.
 
-Third-party software and assets used in this project:
+Third-party components used in this project:
 - TensorFlow.js
   - Website: https://www.tensorflow.org/js
   - License: Apache License 2.0
-  - Please review the upstream project for the exact licensing terms and notices.
 
 - COCO-SSD model package
   - Website: https://github.com/tensorflow/tfjs-models
-  - License terms are defined by the upstream project. Please review the relevant package repository.
+  - License: Upstream project terms apply
 
 - Google Fonts
   - Website: https://fonts.google.com/
-  - License: Google Fonts license terms apply.
-  - Please review the upstream font usage terms for exact attribution requirements.
+  - License: Google Fonts license terms apply
 
 - Wikimedia Commons images
-  - The project may use images sourced from Wikimedia Commons.
-  - Some images may require their own attribution or license notice depending on the specific source image and license.
-  - Please verify the individual image metadata before reusing or redistributing uploaded media.
+  - Source: https://commons.wikimedia.org/
+  - License: Varies by image
+  - Each image must be checked individually for attribution and reuse rights
 
-This notice is provided for attribution and compliance purposes. It does not replace the official license texts of the third-party components.
+- User-uploaded content
+  - Copyright and licensing responsibility remains with the uploader or legal owner
+
+This notice is provided for attribution and compliance purposes. It does not replace the official license terms of third-party projects or media assets.
